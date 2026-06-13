@@ -1,7 +1,7 @@
 # Technical Review: OCR Model Performance Report
 
 **Date:** June 13, 2026  
-**Project:** Rizzler OS - Custom OCR System  
+**Project:** S.C.O.R.E OCR System  
 **Status:** Testing & Evaluation Phase  
 
 ---
