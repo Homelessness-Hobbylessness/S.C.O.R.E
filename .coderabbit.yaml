@@ -1,0 +1,228 @@
+language: "en-US"
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+
+  path_instructions:
+
+    - path: "**/*.py"
+      instructions: |
+        This project is S.C.O.R.E. (Swift Correction & Objective Results Engine) — a fully
+        self-built, privacy-first, GDPR-compliant AI-powered exam correction system for German
+        schools. Every component that touches student data runs fully on-prem on the school's
+        own servers. No student data, handwriting samples, or grades ever reach an external API.
+
+        The core OCR pipeline is a from-scratch CRNN: a CNN backbone extracts visual features
+        from handwriting images, a bidirectional LSTM models those features as a character
+        sequence, and CTC loss handles alignment between pixels and characters without needing
+        pre-segmented character boundaries. The model is trained exclusively on real handwriting
+        data — not MNIST or synthetic fonts. Each student has a personal OCR profile (either a
+        style-reference embedding or a LoRA adapter) trained from 3 calibration samples: a prose
+        page, a numbers/symbols page, and an exam-condition page. These profiles are stored under
+        pseudonymous student IDs.
+
+        After OCR extraction, a locally-hosted open-weight LLM (e.g. Llama/Mistral/Qwen via
+        Ollama or llama.cpp) handles rubric-based grading. The grading model receives the question,
+        the teacher's decomposed rubric (broken into discrete checkable criteria), and the extracted
+        student answer. It outputs a per-criterion grade breakdown, inline annotations, and a
+        student-facing comment. A second independent review model then checks the grading output
+        for internal consistency, rubric misapplication, and statistical outliers across the class.
+        Confidence scores flow through every stage and determine escalation to teacher review.
+        The teacher uses a FastAPI-backed web interface to approve, edit, or override. All
+        corrections feed back into model improvement.
+
+        The model export path is PyTorch → ONNX → ONNX Runtime for efficient on-prem inference
+        without requiring the full PyTorch stack at deployment time.
+
+        Pay close attention to:
+        - Tensor shape correctness at every layer boundary, especially CNN → LSTM handoff
+          (sequence length, batch size, feature dimension ordering)
+        - CTC loss input requirements: log-softmax must be applied before CTCLoss, input must be
+          (T, N, C) not (N, T, C), target lengths and input lengths must be correctly computed
+        - Correct use of .detach() when passing tensors between components to avoid unintended
+          gradient accumulation
+        - GPU memory management: unnecessary tensor retention, missing .zero_grad() calls,
+          in-place operations on leaf variables, improper use of torch.no_grad() during inference
+        - Data leakage: train/validation/test splits must be split by student identity, not
+          randomly by image — a student's handwriting must not appear in both train and eval sets
+        - Pseudonymisation: no real student names, class identifiers, or school identifiers should
+          appear in code, logs, filenames, or comments — only pseudonymous IDs
+        - ONNX export correctness: dynamic axes must be set for variable-length sequence inputs,
+          output of ONNX model must be numerically validated against the PyTorch original
+        - LoRA adapter handling: ensure adapters are versioned, tied to a specific base model
+          version, and that the correct adapter is loaded for the correct student ID
+        - CTC decoding: flag any greedy decoding used where beam search would be more appropriate,
+          and check that blank token indices match between training and decoding
+        - Augmentation pipelines: check that augmentation (rotation, contrast jitter, elastic
+          distortion) is only applied to training data and never to validation or test data
+        - Any hardcoded file paths, model weights paths, or student IDs in source code
+
+    - path: "**/ocr/**/*.py"
+      instructions: |
+        This module handles the personalized OCR pipeline. The base architecture is a CRNN:
+        CNN backbone → BiLSTM → CTC loss. Training data is real student handwriting only.
+
+        Per-student personalization is implemented as either few-shot style-reference conditioning
+        or LoRA fine-tuning on top of a shared base model. Each student's profile is versioned
+        and tagged with creation date and base model version. Re-calibration is triggered
+        periodically or when OCR confidence on known-ground-truth samples drops below threshold.
+
+        Flag immediately:
+        - Any use of MNIST, synthetic fonts, or non-real-handwriting data in training
+        - Missing confidence score output alongside transcription — every OCR output must include
+          per-token or per-line confidence, not just the transcribed text
+        - Missing bounding-box output — every transcribed region must link back to its pixel
+          coordinates on the original scan for the teacher review interface
+        - Student profile loading that doesn't validate the profile version against the base model
+          version it was trained on
+        - Inference paths that don't use ONNX Runtime (raw PyTorch inference is fine for
+          development but flag it if it appears in anything resembling a deployment path)
+
+    - path: "**/preprocessing/**/*.py"
+      instructions: |
+        This module handles exam image ingestion and pre-processing before OCR. Input is raw
+        scans or photos from flatbed scanners, document feeders, or tablet cameras.
+
+        Required operations in order: deskew and crop, contrast normalization (compensating for
+        pencil vs pen, photocopied vs original, uneven lighting), page segmentation (separating
+        printed exam question regions from handwritten answer regions), and student identification
+        via QR code or barcode on the exam sheet — not via handwriting recognition.
+
+        Flag:
+        - Any attempt to identify a student from their handwriting or name written on the paper
+          (this is a circular dependency — the OCR that reads the name depends on knowing who
+          the student is first)
+        - Preprocessing steps that modify the image in ways that could distort character shapes
+          (aggressive sharpening, heavy noise reduction) — these can hurt OCR accuracy
+        - Missing handling for edge cases: blank pages, upside-down scans, multi-page answers,
+          crossed-out and rewritten text regions
+        - Any step that stores the raw unprocessed scan alongside processed output without
+          a clear retention policy comment
+
+    - path: "**/grading/**/*.py"
+      instructions: |
+        This module handles AI-based grading using a locally-hosted open-weight LLM
+        (Llama/Mistral/Qwen family via Ollama or llama.cpp). No student data is sent to any
+        external API under any circumstances.
+
+        The grading model receives: the exam question, the teacher's rubric decomposed into
+        discrete checkable criteria, the OCR-extracted student answer with confidence annotations,
+        and optionally reference solutions or worked examples provided by the teacher.
+
+        Output must be structured: a per-criterion score breakdown (not just a total),
+        inline annotations linked to specific spans of the student's transcribed answer,
+        a short natural-language comment appropriate for the student's age group, and a
+        confidence score for the overall grade and ideally per criterion.
+
+        Flag:
+        - Any grading output that is free-text only with no structured per-criterion breakdown
+        - Confidence scores that are absent or not propagated to the review and escalation stages
+        - Any prompt construction that includes a student's real name, class, or school
+        - Prompts that include the full class's answers in a single context window — grading
+          must be per-student, per-question, not batched across students in one prompt
+        - Missing validation that the model's JSON output is well-formed before it's parsed
+          (LLMs occasionally produce malformed JSON — always wrap parsing in try/except)
+        - Any code path where a low OCR confidence score on the input text does not propagate
+          as a flag on the output grade
+
+    - path: "**/review/**/*.py"
+      instructions: |
+        This module implements the independent review stage that checks the grading model's
+        output. The review model must differ meaningfully from the grading model — either a
+        different model family, a different prompting strategy, or an adversarial framing —
+        to avoid shared blind spots producing shared blind agreement.
+
+        Review checks include: internal consistency of the grade breakdown (sub-scores sum
+        to total, annotations support stated reasoning, feedback comment doesn't contradict
+        the grade), correct rubric application (model isn't penalising things the rubric
+        doesn't mention), and statistical outlier detection (flagging grades that are unusually
+        high or low for a given question relative to the class distribution).
+
+        Flag:
+        - Review implementations that use the same model and the same prompt as the grading
+          stage — this adds no value and creates false confidence
+        - Missing statistical comparison against class distribution for the same question
+        - Review outputs that don't produce their own confidence score distinct from the
+          grading model's confidence
+        - Escalation logic that routes low-confidence items silently rather than flagging
+          them visibly in the teacher review interface
+
+    - path: "**/api/**/*.py"
+      instructions: |
+        This is the FastAPI backend that serves the teacher-facing review interface and
+        coordinates the pipeline stages. All endpoints operate on pseudonymous student IDs only.
+
+        Flag:
+        - Any endpoint that accepts or returns real student names, class names, or school names
+          in request/response bodies — only pseudonymous IDs should flow through the API
+        - Missing authentication or authorisation checks — teachers should only be able to
+          access their own classes' data; admin endpoints must be separately protected
+        - Endpoints that call external URLs or third-party APIs with any student-related data
+          in the request body or headers
+        - Missing audit logging on any endpoint that reads or writes grade data
+        - Synchronous blocking calls to the OCR or grading models inside request handlers —
+          these should be async or offloaded to a task queue
+        - Missing error handling for model inference failures — the API must degrade gracefully
+          if the OCR or grading service is unavailable, not return a 500 with a stack trace
+
+    - path: "**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx"
+      instructions: |
+        This is the teacher-facing review interface. Its primary job is displaying a side-by-side
+        view of the original scanned exam page and the AI-generated transcription with grading
+        annotations, allowing teachers to click to approve, edit individual criterion scores,
+        correct OCR transcriptions, or override grades entirely.
+
+        A critical UX requirement: clicking any piece of feedback or any transcribed text must
+        highlight the corresponding region on the original scan image (bounding-box coordinates
+        come from the OCR module). This is what makes the teacher's review fast and trustworthy
+        rather than requiring them to re-read the whole page.
+
+        Flag:
+        - Any interface element that presents the AI grade as final rather than as a draft
+          pending teacher approval — the language in the UI must make human sign-off feel
+          mandatory, not optional
+        - Missing visual distinction between high-confidence and low-confidence OCR regions
+          or grades (low confidence items must be more visually prominent, not less)
+        - Any client-side storage of student data (localStorage, sessionStorage, IndexedDB)
+          — all student data lives server-side only
+        - API calls that include student identifiers in URL parameters rather than request
+          bodies (URL parameters appear in server logs)
+        - Bulk-approve interactions that don't show a clear summary of what's being approved
+          before confirmation
+
+    - path: "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.env*", "**/config/**"
+      instructions: |
+        Configuration files for the SCORE system. This project runs fully on-prem — no
+        external cloud services, no third-party APIs for any student-data-touching components.
+
+        Flag immediately:
+        - Any API keys, tokens, passwords, or credentials hardcoded in config files
+          (these must be in environment variables or a secrets manager, never in source)
+        - Any configuration pointing to external cloud endpoints (OpenAI, Anthropic, Google,
+          AWS, Azure, etc.) for model inference — all inference must point to local endpoints
+        - Missing environment separation (dev/staging/prod configs should be distinct)
+        - Model paths that are absolute paths to a specific developer's machine rather than
+          relative paths or environment-variable-referenced paths
+
+    - path: "**/tests/**/*.py"
+      instructions: |
+        Test suite for the SCORE pipeline. Given that this system produces grades used in
+        real educational assessments, test coverage and quality matter more than in a typical
+        project.
+
+        Flag:
+        - Tests that use real student names, real handwriting samples, or real exam content
+          — all test data must be synthetic or properly anonymised
+        - Missing tests for the confidence/escalation logic — the thresholds that determine
+          when an item goes to teacher review are critical and must be tested explicitly
+        - Tests for the grading module that only check the happy path (clear, correct answers)
+          without testing ambiguous answers, partially correct answers, or answers written in
+          unexpected formats
+        - Missing data-leakage tests — there should be an explicit test verifying that no
+          student whose handwriting appears in a training split appears in the validation split
+        - CTC decoding tests that only test greedy decoding outputs without testing beam search
+          or edge cases (empty output, repeated characters, all-blank output)
