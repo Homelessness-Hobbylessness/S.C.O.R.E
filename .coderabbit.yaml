@@ -3,7 +3,7 @@ language: "en-US"
 reviews:
   auto_review:
     enabled: true
-    drafts: false        # skip draft PRs (good practice — review when it's ready)
+    drafts: false
   profile: "assertive"
   request_changes_workflow: false
   high_level_summary: true
@@ -172,7 +172,7 @@ reviews:
         - Missing error handling for model inference failures — the API must degrade gracefully
           if the OCR or grading service is unavailable, not return a 500 with a stack trace
 
-    - path: "**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx"
+    - path: "**/*.{js,ts,jsx,tsx}"
       instructions: |
         This is the teacher-facing review interface. Its primary job is displaying a side-by-side
         view of the original scanned exam page and the AI-generated transcription with grading
@@ -197,7 +197,7 @@ reviews:
         - Bulk-approve interactions that don't show a clear summary of what's being approved
           before confirmation
 
-    - path: "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.env*", "**/config/**"
+    - path: "**/*.{yaml,yml,toml,env}"
       instructions: |
         Configuration files for the SCORE system. This project runs fully on-prem — no
         external cloud services, no third-party APIs for any student-data-touching components.
