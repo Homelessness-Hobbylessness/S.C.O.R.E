@@ -14,16 +14,29 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Safely get the PR number regardless of whether it's a PR event or a Review event
+            const prNumber = context.payload.pull_request 
+              ? context.payload.pull_request.number 
+              : context.issue.number;
+
+            if (!prNumber) {
+              core.setFailed("❌ Could not determine the Pull Request number from the current event context.");
+              return;
+            }
+
+            console.log(`Checking reviews for PR #${prNumber}...`);
+
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number,
+              pull_number: prNumber,
             });
             
+            // Filter to only count reviews that are strictly 'APPROVED'
             const hasApproval = reviews.some(review => review.state === 'APPROVED');
             
             if (!hasApproval) {
-              core.setFailed("❌ This PR requires at least one peer review approval before it can be trusted!");
+              core.setFailed("❌ This PR requires at least one peer review approval before it can be merged!");
             } else {
-              console.log("✅ PR has been approved by a peer.");
+              console.log("✅ PR has been approved by a peer. Ready to merge!");
             }
