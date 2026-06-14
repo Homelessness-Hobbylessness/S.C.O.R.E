@@ -1,6 +1,9 @@
 language: "en-US"
 
 reviews:
+  auto_review:
+    enabled: true
+    drafts: false        # skip draft PRs (good practice — review when it's ready)
   profile: "assertive"
   request_changes_workflow: false
   high_level_summary: true
