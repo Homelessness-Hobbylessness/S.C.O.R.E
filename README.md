@@ -1,4 +1,4 @@
-# S.C.O.R.E. — Swift Correction & Objective Results Engine
+# S.C.O.R.E. — Swift Correction & Objective Results Engine 
 
 ## Overview
 
