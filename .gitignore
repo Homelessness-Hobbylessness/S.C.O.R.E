@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+*.env
+!.env.example
+
+# Model weights & checkpoints
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.bin
+checkpoints/
+runs/
+outputs/
+
+# Training data (never commit real handwriting samples)
+data/raw/*
+data/processed/*
+!data/raw/raw
+!data/processed/processed
+!data/labels.json
+
+# Logs
+*.log
+training_log.json
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Node
+node_modules/
+frontend-ipad/node_modules/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb

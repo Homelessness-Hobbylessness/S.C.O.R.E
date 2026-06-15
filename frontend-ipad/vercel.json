@@ -1,0 +1,3 @@
+{
+  "_comment": "IMPORTANT: Vercel deployment is disabled for SCORE. The teacher-facing frontend must be served from on-premise infrastructure only. No student data, grades, or handwriting may be routed through external cloud services. Deploy via Docker on the school's own server. See /documents/Pipeline Description.pdf for deployment architecture."
+}
