@@ -103,6 +103,10 @@ def ctc_beam_search_decode(
                         new_beam[new_prefix][1] = _log_add(
                             new_beam[new_prefix][1], p_b + lp[c]
                         )
+                        # Non-blank repeat path keeps the same collapsed prefix
+                        new_beam[prefix][1] = _log_add(
+                            new_beam[prefix][1], p_nb + lp[c]
+                        )
                     else:
                         new_beam[new_prefix][1] = _log_add(
                             new_beam[new_prefix][1],
@@ -146,6 +150,8 @@ def character_error_rate(predictions: List[str], targets: List[str]) -> float:
 
     CER = (substitutions + deletions + insertions) / len(target)
     """
+    if len(predictions) != len(targets):
+        raise ValueError("predictions and targets must have the same length")
     try:
         import editdistance
     except ImportError:
@@ -162,6 +168,8 @@ def word_error_rate(predictions: List[str], targets: List[str]) -> float:
     """
     Word Error Rate (WER) — secondary metric, useful for sentence-level assessment.
     """
+    if len(predictions) != len(targets):
+        raise ValueError("predictions and targets must have the same length")
     try:
         import editdistance
     except ImportError:

@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader
 
 from src.model import CRNN
 from src.dataset import HandwritingDataset, build_vocab, collate_fn
-from src.utils import ctc_greedy_decode, character_error_rate
+from src.utils import ctc_greedy_decode, ctc_beam_search_decode, character_error_rate
 
 
 def parse_args():
@@ -79,6 +79,11 @@ def main():
         writer_splits=writer_splits, transform=None,
     )
 
+    if len(train_ds) == 0:
+        raise ValueError("train_ds is empty. Check writer_splits and available data.")
+    if len(val_ds) == 0:
+        raise ValueError("val_ds is empty. Check writer_splits and available data.")
+
     train_loader = DataLoader(
         train_ds, batch_size=args.batch_size,
         shuffle=True, collate_fn=collate_fn, num_workers=2,
@@ -130,7 +135,7 @@ def main():
         # --- Validation ---
         model.eval()
         all_preds, all_targets_str = [], []
-
+beam_search_decode(logits, idx2char, blank_idx=0, beam_width=1
         with torch.no_grad():
             for images, targets, input_lengths, target_lengths in val_loader:
                 images = images.to(device)

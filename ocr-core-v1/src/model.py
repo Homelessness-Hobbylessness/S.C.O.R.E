@@ -48,7 +48,7 @@ class CRNN(nn.Module):
         lstm_hidden: int = 256,
     ):
         super().__init__()
-        assert img_height % 16 == 0, "img_height must be divisible by 16"
+        assert img_height == 32, "img_height must be exactly 32"
 
         self.cnn = nn.Sequential(
             # Block 1

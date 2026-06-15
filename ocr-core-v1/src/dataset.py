@@ -74,7 +74,9 @@ class HandwritingDataset(Dataset):
             all_labels: Dict[str, str] = json.load(f)
 
         # Filter by writer ID if splits provided
-        if writer_splits and split in writer_splits:
+        if writer_splits:
+            if split not in writer_splits:
+                raise ValueError(f"Split '{split}' not found in explicitly provided writer_splits configuration.")
             allowed_prefixes = tuple(writer_splits[split])
             self.samples = [
                 (fname, text)
@@ -138,7 +140,7 @@ def collate_fn(
     # minus 1 from the final Conv2d kernel=2). Compute actual sequence lengths.
     # Adjust this formula if you change the CNN architecture.
     input_lengths = torch.tensor(
-        [(img.shape[2] // 4) - 1 for img in images], dtype=torch.long
+        [max(1, (img.shape[2] // 4) - 1) for img in images], dtype=torch.long
     )
 
     return padded, targets, input_lengths, target_lengths

@@ -4,8 +4,6 @@ __pycache__/
 *.onnx
 data/raw/*
 data/processed/*
-!data/raw/raw
-!data/processed/processed
 checkpoints/
 training_log.json
 .env

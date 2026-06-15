@@ -34,7 +34,7 @@ def main():
     args = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    ckpt = torch.load(args.checkpoint, map_location=device)
+    ckpt = torch.load(args.checkpoint, map_location=device, weights_only=True)
     char2idx: dict = ckpt["char2idx"]
     idx2char: dict = ckpt["idx2char"]
     saved_args: dict = ckpt.get("args", {})
@@ -80,7 +80,7 @@ def main():
     wer = word_error_rate(all_preds, all_targets)
 
     print(f"\n{'='*40}")
-    print(f"S.C.O.R.E. OCR Evaluation Results")
+    print("S.C.O.R.E. OCR Evaluation Results")
     print(f"{'='*40}")
     print(f"Test samples:  {len(all_preds)}")
     print(f"Beam width:    {args.beam_width}")

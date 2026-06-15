@@ -31,20 +31,22 @@ def parse_args():
 def main():
     args = parse_args()
 
-    ckpt = torch.load(args.checkpoint, map_location="cpu")
+    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
     saved_args = ckpt.get("args", {})
     char2idx = ckpt["char2idx"]
 
+    img_height = saved_args.get("img_height", args.img_height)
+
     model = CRNN(
         num_classes=len(char2idx) + 1,
-        img_height=saved_args.get("img_height", args.img_height),
+        img_height=img_height,
         lstm_hidden=saved_args.get("lstm_hidden", 256),
     )
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 
     # Dummy input — batch of 1, height 32, width 128 (arbitrary)
-    dummy = torch.randn(1, 1, args.img_height, 128)
+    dummy = torch.randn(1, 1, img_height, 128)
 
     torch.onnx.export(
         model,

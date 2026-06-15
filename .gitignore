@@ -34,8 +34,6 @@ outputs/
 # Training data (never commit real handwriting samples)
 data/raw/*
 data/processed/*
-!data/raw/raw
-!data/processed/processed
 !data/labels.json
 
 # Logs
