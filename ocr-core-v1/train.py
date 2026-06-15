@@ -135,7 +135,6 @@ def main():
         # --- Validation ---
         model.eval()
         all_preds, all_targets_str = [], []
-beam_search_decode(logits, idx2char, blank_idx=0, beam_width=1
         with torch.no_grad():
             for images, targets, input_lengths, target_lengths in val_loader:
                 images = images.to(device)
