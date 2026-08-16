@@ -17,9 +17,20 @@ def get_image_path():
                 pass
         print("Invalid image file. Try again.")
 
+def run_ocr(path):
+    try:
+        with Image.open(path) as img:
+            return pytesseract.image_to_string(img, timeout=30)
+    except pytesseract.TesseractNotFoundError:
+        print("Tesseract is not installed or not on PATH.")
+        sys.exit(1)
+    except (OSError, RuntimeError) as e:
+        print(f"OCR failed: {e}")
+        sys.exit(1)
+
 def main():
     path = get_image_path()
-    text = pytesseract.image_to_string(Image.open(path))
+    text = run_ocr(path)
     print(text.strip() or "(No text detected)")
     sys.exit()
 
