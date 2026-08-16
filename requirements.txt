@@ -1,0 +1,3 @@
+sudo apt install tesseract-ocr      # Linux
+brew install tesseract              # macOS
+# Windows: https://github.com/UB-Mannheim/tesseract/wiki
