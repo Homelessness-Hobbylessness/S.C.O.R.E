@@ -1,6 +1,6 @@
 import os
 import sys
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import pytesseract
 
 def get_image_path():
@@ -8,9 +8,12 @@ def get_image_path():
         path = input("Please paste the file path of the image: ").strip().strip('"')
         if os.path.isfile(path):
             try:
-                Image.open(path).verify()
+                with Image.open(path) as img:
+                    img.verify()
+                with Image.open(path) as img:
+                    img.load()
                 return path
-            except Exception:
+            except (UnidentifiedImageError, OSError):
                 pass
         print("Invalid image file. Try again.")
 
