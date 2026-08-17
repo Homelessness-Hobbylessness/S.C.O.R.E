@@ -15,23 +15,20 @@ Three principles run through every stage of this pipeline:
 
 ## Full Pipeline Specification
 
-### Phase 1: Student Calibration (Building the Personal OCR Model)
-At the start of a term, teachers submit three handwriting samples per student (continuous prose, numbers/symbols, exam-condition writing). These are used to create a personal OCR model either via few-shot conditioning (Approach A) or lightweight per-student fine-tuning like LoRA adapters (Approach B).
+### Phase 1: Ingestion & Pre-Processing
+Scanned PDFs are deskewed (OpenCV identifies the ruled-paper angle and rotates to horizontal), ruled lines are removed via in-painting, and a layout segmentation model separates natural-language text from mathematical equations and diagrams.
 
-### Phase 2: Exam Ingestion
-Exams arrive as scans. A pre-processing stage handles deskewing, cropping, contrast normalization, page segmentation (separating printed questions from handwritten answers), and student identification via QR code or barcode.
+### Phase 2: Math OCR & LaTeX Extraction
+Mathematical segments are converted to structured LaTeX via a dedicated math-OCR engine (GOT-OCR 2.0 in production; a multimodal LLM API is used as a substitute during prototyping since no free-tier hosting exists yet for GOT-OCR 2.0). Output is a clean Markdown document with embedded LaTeX.
 
-### Phase 3: Personalized OCR Extraction
-The student's OCR profile extracts text with per-token or per-line confidence scores, linking transcribed words to bounding-box coordinates on the original scan. Low-confidence segments are flagged for the grading model or routed straight to manual review.
+### Phase 3: Tripartite Context Engine
+The primary grading LLM receives three inputs simultaneously: (A) the clean OCR'd student answer, (B) the original blank question paper, and (C) the teacher's rubric (Erwartungshorizont). Using all three, it evaluates the student's logic, generates localized feedback, and proposes a score.
 
-### Phase 4: AI Grading Engine
-The grading model evaluates the extracted answer against the question, the teacher's rubric (broken into discrete, checkable criteria), and reference materials. It outputs a numerical/letter grade, a per-criterion breakdown, inline annotations, a summary comment, and a confidence score. Different subjects are routed to appropriate evaluation strategies (closed-form vs. short factual vs. extended writing).
+### Phase 4: Dual-Verification
+SymPy checks generated LaTeX for syntactic validity before grading. A second, independently-prompted Auditor AI (a different model from the primary grader) cross-references the primary AI's proposed score and feedback against the rubric, flagging discrepancies such as missed valid solution paths or incorrect rubric application.
 
-### Phase 5: Independent Review
-An independent review model (different model family, task framing, or evidence base) checks the grading model's output for internal consistency, correct rubric application, and statistical anomalies compared to the class distribution. Any issues flag the exam for closer teacher review.
-
-### Phase 6: Teacher Verification
-Teachers verify the results in a side-by-side view (original scan vs. transcribed text with grading annotations). High-confidence exams can be quickly approved, while flagged exams require closer review. All teacher edits to transcriptions or grades are logged as training signals to improve the system.
+### Phase 5: Morning Review
+Teachers review flagged/low-confidence items in a triage queue via a web dashboard, viewing the original handwritten snippet beside the AI's proposed score. Final grading authority always rests with the teacher; a click of "Approve" locks in a grade.
 
 ----
 
@@ -49,11 +46,14 @@ Teachers verify the results in a side-by-side view (original scan vs. transcribe
 
 - **Backend**: Python, FastAPI
 - **AI/ML**: TensorFlow, PyTorch, Hugging Face Transformers, Llama / Mistral / Qwen (Open-weight LLMs)
-- **OCR**: TrOCR / Donut / Vision-Transformer family
+- **OCR**: GOT-OCR 2.0 (production, on-prem) / multimodal LLM API (prototyping only)
 - **Database**: PostgreSQL
 - **Frontend**: React, TypeScript
 - **Deployment**: Docker, Kubernetes (On-premise / EU data-center)
 - **CI/CD**: GitHub Actions
+
+### Prototyping vs. Production
+Prototype development uses external APIs (a multimodal LLM for OCR, one LLM for primary grading, a second distinct LLM for auditing) against synthetic/dummy exam data only; production deployment runs fully on-prem on school servers via Ollama/llama.cpp with GGUF-quantized models, with zero real student data ever leaving the school network.
 
 ## Getting Started
 
@@ -79,3 +79,4 @@ cd frontend && npm install
 
 # Setup environment variables
 cp .env.example .env
+```
