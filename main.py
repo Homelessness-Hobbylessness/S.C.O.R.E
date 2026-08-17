@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import re
 from PIL import Image, UnidentifiedImageError
 import pytesseract
 from pytesseract import Output
@@ -12,8 +11,7 @@ def clear_screen():
 def get_language():
     try:
         available = pytesseract.get_languages(config='')
- 
-except pytesseract.TesseractNotFoundError:
+    except pytesseract.TesseractNotFoundError:
         print("Tesseract not installed.")
         sys.exit(1)
 
@@ -67,7 +65,7 @@ def text_ok(text, accuracy, min_accuracy=50.0):
     letters = sum(c.isalnum() for c in text)
     if letters / len(text) < 0.4:
         return False
-    return bool(re.findall(r"[A-Za-z]{2,}", text))
+    return any(len(word) >= 2 and word.isalpha() for word in text.split())
 
 def main():
     clear_screen()
